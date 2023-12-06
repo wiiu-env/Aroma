@@ -35,3 +35,9 @@ A bundle with the latest files can be downloaded [here](https://aroma.foryour.ca
 
 1. Extract the files to the root of your sd card
 2. Launch the environment via the [EnvironmentLoader](https://github.com/wiiu-env/EnvironmentLoader). You may need to hold `X` while launching the EnvironmentLoader to force open the menu.
+
+## Where's the Code?
+
+Aroma is a collection of tools, which all have public repos.
+
+You can go to https://aroma.foryour.cafe/package/base-aroma and click on any listed repository to see the source code of each part.

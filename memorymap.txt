@@ -1,0 +1,82 @@
+payload.elf maps memory on the main core: 0x00800000 - 0x01000000
+[0x00800000 - 0x01000000: empty]
+
+PayloadLoaderPayload will get loaded to:  0x00FD0000
+[0x00800000                                                 to              0x00FD0000                                  : empty] 
+[0x00FD0000                                                 to              0x00FFF000                                  : PayloadLoaderPayload] 
+[0x00FFF000                                                 to              0x01000000                                  : empty]
+
+CustomRPXLoader will get loaded to: 0x00800000
+[0x00800000                                                 to              0x00800000 + sizeof(CustomRPXLoader))       : CustomRPXLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : PayloadLoaderPayload] 
+[0x00FFF000                                                 to              0x01000000                                  : empty]
+
+CustomRPXLoader will copy the BATSetupHook to 0x00FFF000
+[0x00800000                                                 to              0x00800000 + sizeof(CustomRPXLoader)        : CustomRPXLoader] 
+[endof(CustomRPXLoader)                                     to              0x00FD0000                                  : empty] 
+[0x00FD0000                                                 to              0x00FFF000                                  : PayloadLoaderPayload] 
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+
+The EnvironmentLoader (payload.rpx ) will to be loaded to be right before 0x00FD0000
+[0x00800000                                                 to              0x00800000 + sizeof(CustomRPXLoader)        : CustomRPXLoader] 
+[(0x00FD0000 - sizeof(EnvironmentLoader))                   to              0x00FD0000                                  : EnvironmentLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : PayloadLoaderPayload] 
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+
+The EnvironmentLoader is responsible for exiting. This means it can safely overwrite the CustomRPXLoader and PayloadLoaderPayload
+[0x00800000                                                 to              startof(EnvironmentLoader))                 : empty]
+[startof(EnvironmentLoader)                                 to              0x00FD0000                                  : EnvironmentLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : empty] 
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+
+The EnvironmentLoader with use the memory region from the start (0x00800000) to itself (startof(EnvironmentLoader)) to load the setup modules (one at a time). 
+Each module is loaded to the **end** of this region (startof(currentModule) = (0x00FD0000 - sizeof(EnvironmentLoader) - sizeof(currentModule))
+[0x00800000                                                 to              startof(currentModule)                      : empty]
+[startof(EnvironmentLoader) - sizeof(currentModule)         to              startof(EnvironmentLoader)                  : current setup module (aligned         to the end)]
+[(0x00FD0000 - sizeof(EnvironmentLoader))                   to              0x00FD0000                                  : EnvironmentLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : empty] 
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+
+When the WUMSLoader gets loaded by the EnvironmentLoader (current setup module is now shown as WUMSLoader), it'll copy it's "wumsrelocator" to 0x00800000.
+[0x00800000                                                 to              0x00800000 + sizeof(wumsrelocator)          : wumsrelocator]
+[endof(wumsrelocator)                                       to              startof(WUMSLoader)                         : empty]
+[sizeof(WUMSLoader)                                         to              startof(EnvironmentLoader)                  : WUMSLoader (current setup module) (aligned         to the end)]
+[(0x00FD0000 - sizeof(EnvironmentLoader))                   to              0x00FD0000                                  : EnvironmentLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : empty] 
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+
+The WUMSLoader will also load the "Aroma Modules" (these are different than the setup modules!) into the region between the wumsrelocator and WUMSLoader.
+[0x00800000                                                 to              0x00800000 + sizeof(wumsrelocator)          : wumsrelocator]
+[endof(wumsrelocator)                                       to              startof(WUMSLoader)                         : Aroma Modules]
+[sizeof(WUMSLoader)                                         to              startof(EnvironmentLoader)                  : WUMSLoader (current setup module) (aligned         to the end)]
+[(0x00FD0000 - sizeof(EnvironmentLoader))                   to              0x00FD0000                                  : EnvironmentLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : empty] 
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+
+The WUMSLoader will also load the Wiiu Plugin Backend, it's plugins will get loaded to Aromas custom memory:
+[0x00800000                                                 to              0x00800000 + sizeof(wumsrelocator)          : wumsrelocator]
+[endof(wumsrelocator)                                       to              startof(WUMSLoader)                         : Aroma Modules]
+[sizeof(WUMSLoader)                                         to              startof(EnvironmentLoader)                  : WUMSLoader (current setup module) (aligned         to the end)]
+[(0x00FD0000 - sizeof(EnvironmentLoader))                   to              0x00FD0000                                  : EnvironmentLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : empty] 
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+[0x8XXXXXXX                                                 to              0xXXXXXXXX                                  : Aromas Plugins, Aromas Heap]
+
+
+Now the EnvironmentLoader can't use that region at the start anymore to load it's setup modules. Instead we use the custom memory from Aroma to load any further setup modules (e.g. the AutobootModule)
+[0x00800000                                                 to              0x00800000 + sizeof(wumsrelocator)          : wumsrelocator]
+[endof(wumsrelocator)                                       to              endof(wumsrelocator)+ sizeof(AromaModules)  : Aroma Modules]
+[endof(AromaModules)                                        to              startof(EnvironmentLoader)                  : empty]                // This is where the WUMSLoader was
+[(0x00FD0000 - sizeof(EnvironmentLoader))                   to              0x00FD0000                                  : EnvironmentLoader] 
+[0x00FD0000                                                 to              0x00FFF000                                  : empty]                // This is where the PayloadLoaderPayload was
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+[0x8XXXXXXX                                                 to              0x8XXXXXXX                                  : Aromas Plugins, Aromas Heap, current setup module (in aroma custom memory]
+
+The memory region where the WUMSLoader, EnvironmentLoader and PayloadLoaderPayload were loaded can't be used for Aroma.
+[0x00800000                                                 to              0x00800000 + sizeof(wumsrelocator)          : wumsrelocator]
+[endof(wumsrelocator)                                       to              endof(wumsrelocator)+ sizeof(AromaModules)  : Aroma Modules]
+[endof(AromaModules)                                        to              startof(WUMSLoader)                         : empty]                // This is where the WUMSLoader was
+[endof(WUMSLoader)                                          to              endof(EnvironmentLoader)                    : empty]                // This is where the EnvironmentLoader was
+[0x00FD0000                                                 to              0x00FFF000                                  : empty]                // This is where the PayloadLoaderPayload was
+[0x00FFF000                                                 to              0x01000000                                  : BATSetupHook]
+[0x8XXXXXXX                                                 to              0x8XXXXXXX                                  : Aromas Plugins, Aromas Heap, current setup module (in aroma custom memory]

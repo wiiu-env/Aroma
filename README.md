@@ -36,6 +36,14 @@ A bundle with the latest files can be downloaded [here](https://aroma.foryour.ca
 1. Extract the files to the root of your sd card
 2. Launch the environment via the [EnvironmentLoader](https://github.com/wiiu-env/EnvironmentLoader). You may need to hold `X` while launching the EnvironmentLoader to force open the menu.
 
+## Troubleshooting SD card write errors
+
+If Aroma reports that the SD card is write-locked even though other Wii U software can still write to the card, check the SD card's physical lock tab (or the tab on a microSD-to-SD adapter) first.
+
+If the physical lock is not the cause, recreate the Aroma files on the SD card from fresh downloads instead of reusing the existing `wiiu` tree. On Windows, files or directories copied or extracted to FAT32 media can retain attributes that make the `wiiu` tree effectively read-only to Aroma. Re-extract the current Base Aroma and payload archives with an archive tool such as 7-Zip, then retry before restoring unrelated homebrew files.
+
+A successful write from Mii Maker does not prove that Aroma's `wiiu` directory is writable, because it writes elsewhere on the card. If the problem persists with freshly downloaded files on known-good media, treat it as a separate filesystem, adapter, SD-slot, or hardware problem rather than repeatedly modifying the Aroma installation.
+
 ## Where's the Code?
 
 Aroma is a collection of tools, which all have public repos.
